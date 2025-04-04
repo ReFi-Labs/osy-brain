@@ -1,4 +1,4 @@
-import { ContractService } from 'src/contract';
+import { ContractService } from 'src/contract/contract';
 import { defineCollection } from 'src/db';
 
 import { Injectable, Logger } from '@nestjs/common';
