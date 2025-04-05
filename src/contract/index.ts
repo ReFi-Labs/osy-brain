@@ -3,7 +3,7 @@ import { defineCollection } from 'src/db';
 
 import { Logger } from '@nestjs/common';
 
-import * as vaultAbi from '../abi/vault.abi.json';
+import * as vaultAbi from './abi/vault.abi.json';
 
 export class ContractService {
     private readonly logger = new Logger(ContractService.name);
@@ -160,5 +160,34 @@ export class ContractService {
         this.logger.log(`Withdraw And Bridge And Deposit Actions: ${JSON.stringify(actions)}`);
 
         return tx.hash;
+    }
+
+    async sendCctpMessage(id: string, message: string, attestation: string): Promise<boolean> {
+        const db = await defineCollection();
+
+        const cctpMessage = await db.collection.cctpMessage.findOne({ id });
+        if(!cctpMessage) {
+            return false;
+        }
+
+        const network = await db.collection.network.findOne({ chainId: cctpMessage.dstChainId });
+        if(!network) {
+            return false;
+        }
+        const vault = await db.collection.vault.findOne({ chainId: cctpMessage.dstChainId });
+        if(!vault) {
+            return false;
+        }
+
+        const provider = new ethers.JsonRpcProvider(network.rpc);
+        const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+        const contract = new ethers.Contract(vault.address, vaultAbi, wallet);
+
+        const tx = await contract.handleCCTP(message, attestation, cctpMessage.id, cctpMessage.body, {gasLimit: 1000000});
+        await db.collection.cctpMessage.updateOne({ id: cctpMessage.id }, {dstTxHash: tx.hash});
+        const receipt = await tx.wait();
+
+        this.logger.log(`Send CCTP Message Tx: ${tx.hash}`);
+        return receipt.status === 1;
     }
 }

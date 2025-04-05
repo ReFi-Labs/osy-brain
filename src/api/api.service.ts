@@ -1,4 +1,8 @@
-import { defineCollection, IApyHistoryModel, IPoolModel } from 'src/db';
+import { ethers } from 'ethers';
+import * as vaultAbi from 'src/contract/abi/vault.abi.json';
+import {
+  defineCollection, IApyHistoryModel, IPoolModel, IRebalanceHistoryModel
+} from 'src/db';
 
 import { Injectable, Logger } from '@nestjs/common';
 
@@ -28,6 +32,30 @@ export class ApiService {
     }
 
     const history = await db.collection.apyHistory.find(
+      filter,
+      { _id: 0, __v: 0 }
+    )
+      .sort({ timestamp: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    return history;
+  }
+
+
+  async getRebalanceHistory(query: HistoryRequestDto): Promise<IRebalanceHistoryModel[]> {
+    const db = await defineCollection();
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+
+    const filter: Record<string, any> = {};
+    if (query.chainId !== undefined) {
+      filter.chainId = query.chainId;
+    }
+    if (query.protocolId !== undefined) {
+      filter.protocolId = query.protocolId;
+    }
+    const history = await db.collection.rebalanceHistory.find(
       filter,
       { _id: 0, __v: 0 }
     )

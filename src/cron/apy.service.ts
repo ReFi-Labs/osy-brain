@@ -76,7 +76,7 @@ export class ApyService {
 
             this.logger.log('APY History Inserted');
         } catch (error) {
-            this.logger.error('Error in APY Service:');
+            this.logger.error('API 호출 중 오류 발생:');
         }
     }
 }

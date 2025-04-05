@@ -21,4 +21,10 @@ export class ApiController {
     const history = await this.apiService.getApyHistory(query);
     res.status(200).json(history);
   }
+
+  @Get('/rebalance-history')
+  async getRebalanceHistory(@Res() res: Response, @Query() query: HistoryRequestDto): Promise<void> {
+    const history = await this.apiService.getRebalanceHistory(query);
+    res.status(200).json(history);
+  }
 }
