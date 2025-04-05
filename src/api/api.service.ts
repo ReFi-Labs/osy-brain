@@ -7,6 +7,7 @@ import {
 import { Injectable, Logger } from '@nestjs/common';
 
 import { HistoryRequestDto } from './dto';
+import { WebhookEvent } from './dto/nodit.request';
 
 @Injectable()
 export class ApiService {
@@ -64,5 +65,37 @@ export class ApiService {
       .limit(limit);
 
     return history;
+  }
+
+  async handleWebhook(body: WebhookEvent): Promise<void> {
+    const db = await defineCollection();
+    const event = this.parseWebhookLogEvent(body);
+
+    for(const message of event.event.messages) {
+      const txHash = message.transaction_hash;
+      this.logger.log(`Nodit Webhook TxHash: ${txHash}`);
+      const vaultInterface = new ethers.Interface(vaultAbi);
+      const parsedLog = vaultInterface.parseLog(message);
+      const id = parsedLog.args.messageId;
+      const srcChainId = Number(parsedLog.args.srcChainId);
+      const dstChainId = Number(parsedLog.args.dstChainId);
+      const body = parsedLog.args.body;
+      this.logger.log(`Nodit Webhook Message: ${id}, ${srcChainId}, ${dstChainId}, ${body}`);
+
+      await db.collection.cctpMessage.insertOne({
+          txHash: txHash,
+          id: id,
+          srcChainId: srcChainId,
+          dstChainId: dstChainId,
+          body: body,
+          timestamp: Date.now(),
+          isSent: false,
+      });
+    }
+  }
+
+  parseWebhookLogEvent(data: any): WebhookEvent {
+    const event = data as WebhookEvent;
+    return event;
   }
 }
